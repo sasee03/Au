@@ -7,7 +7,7 @@ const iconChevronLeft = (
 )
 
 const Logo = () => (
-  <div style={{ width:28, height:28, borderRadius:6, flexShrink:0, background:'#6366f1', display:'flex', alignItems:'center', justifyContent:'center' }}>
+  <div style={{ width:28, height:28, borderRadius:6, flexShrink:0, background:'#f5822a', display:'flex', alignItems:'center', justifyContent:'center' }}>
     <svg width="17" height="15" viewBox="0 0 18 16" fill="none">
       <polygon points="3,7 9,3 15,7" fill="none" stroke="white" strokeWidth="0.8"/>
       <polygon points="3,7 9,3 9,5" fill="rgba(255,255,255,0.15)"/>
@@ -41,13 +41,13 @@ const Logo = () => (
 export default function TopNav({
   title, badge, tabs, activeTab, onTabChange,
   backLabel, onBack, rightContent,
-  showLogo = false, activeColor = '#6366f1'
+  showLogo = false, activeColor = '#f5822a'
 }) {
   const navigate = useNavigate()
 
   return (
     <header style={{
-      height: 52, background: '#0f1018', borderBottom: '1px solid #1e1f2e',
+      height: 52, background: '#fffaf3', borderBottom: '1px solid #f3e4d3',
       display: 'flex', alignItems: 'center', paddingInline: 18, gap: 0,
       flexShrink: 0, width: '100%'
     }}>
@@ -56,7 +56,7 @@ export default function TopNav({
       {backLabel && (
         <>
           <button onClick={onBack || (() => navigate(-1))} style={{
-            display: 'flex', alignItems: 'center', gap: 4, color: '#8b8ca8',
+            display: 'flex', alignItems: 'center', gap: 4, color: '#6f756f',
             background: 'none', border: 'none', fontSize: 12.5, cursor: 'pointer',
             padding: '4px 8px 4px 0', borderRadius: 6, whiteSpace: 'nowrap', flexShrink: 0
           }}>
@@ -95,7 +95,7 @@ export default function TopNav({
           {title && <span style={{ fontWeight: 600, fontSize: 14, color: '#e8e9f0' }}>{title}</span>}
           {badge && (
             <span style={{
-              background: 'rgba(99,102,241,0.18)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)',
+              background: 'rgba(245,130,42,0.18)', color: '#d86518', border: '1px solid rgba(245,130,42,0.3)',
               fontSize: 11, padding: '2px 9px', borderRadius: 20, fontWeight: 500
             }}>{badge}</span>
           )}

@@ -1,5 +1,6 @@
+from typing import Literal,List
 from pydantic_settings import BaseSettings
-from typing import List
+
 
 
 class Settings(BaseSettings):
@@ -10,10 +11,10 @@ class Settings(BaseSettings):
     AURUM_DB_PORT: int = 5432
     AURUM_DB_NAME: str = "aurum"          # one DB, three schemas
     AURUM_DB_USER: str = "postgres"
-    AURUM_DB_PASSWORD: str = "postgres"
+    AURUM_DB_PASSWORD: str = ""
 
     # AI
-    AI_PROVIDER: str = "ollama"   # "gemini" or "ollama"
+    AI_PROVIDER: Literal["gemini", "ollama"] = "ollama"  # "gemini" or "ollama"
     AI_ENDPOINT: str = "http://localhost:11434/api/generate"
     AI_MODEL: str = "llama3"
     AI_API_KEY: str = ""

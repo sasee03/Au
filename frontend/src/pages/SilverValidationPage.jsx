@@ -285,6 +285,24 @@ export default function SilverValidationPage() {
       sessionStorage.setItem('aurum_silver_results', JSON.stringify(allResults))
       // Also update legacy key for single-table compatibility
       sessionStorage.setItem('aurum_silver_result', JSON.stringify(allResults[activeTable]))
+
+      // ── Build schema_info for Gold layer ────────────────────────────────
+      // Fetch the silver schema filtered to only the tables in this session.
+      // This prevents stale tables from previous projects being sent to the AI.
+      try {
+        const selectedRaw = sessionStorage.getItem('aurum_selected_tables')
+        const selected = selectedRaw ? JSON.parse(selectedRaw) : []
+        const tablesParam = selected.length
+          ? `?tables=${encodeURIComponent(selected.join(','))}`
+          : ''
+        const schemaRes = await fetch(`${API}/silver/schema${tablesParam}`)
+        if (schemaRes.ok) {
+          const schemaData = await schemaRes.json()
+          if (schemaData.schema_info) {
+            sessionStorage.setItem('aurum_schema_info', schemaData.schema_info)
+          }
+        }
+      } catch (_) { /* non-critical */ }
     } catch (err) {
       alert(`Execution failed: ${err.message}`)
     } finally {

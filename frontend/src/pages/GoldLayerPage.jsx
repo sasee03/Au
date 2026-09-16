@@ -25,7 +25,30 @@ export default function GoldLayerPage() {
   const [schemaInfo,  setSchemaInfo]  = useState('')
 
   useEffect(() => {
-    setSchemaInfo(sessionStorage.getItem('aurum_schema_info') || '')
+    // Always fetch live silver schema from backend on mount, filtered to
+    // only the tables selected in this session. This ensures Gold always gets
+    // exact silver.<table> names and never sees stale tables from old projects.
+    const fetchSchema = async () => {
+      try {
+        const selectedRaw = sessionStorage.getItem('aurum_selected_tables')
+        const selected = selectedRaw ? JSON.parse(selectedRaw) : []
+        const tablesParam = selected.length
+          ? `?tables=${encodeURIComponent(selected.join(','))}`
+          : ''
+        const res = await fetch(`${API}/silver/schema${tablesParam}`)
+        if (res.ok) {
+          const d = await res.json()
+          if (d.schema_info) {
+            setSchemaInfo(d.schema_info)
+            sessionStorage.setItem('aurum_schema_info', d.schema_info)
+            return
+          }
+        }
+      } catch (_) { /* fall through to sessionStorage */ }
+      // Fallback: use whatever was stored from Silver execution
+      setSchemaInfo(sessionStorage.getItem('aurum_schema_info') || '')
+    }
+    fetchSchema()
   }, [])
 
   // ── Generate KPI Plan ───────────────────────────────────────────────────
@@ -67,11 +90,27 @@ export default function GoldLayerPage() {
     const finalKpis = kpis.filter(k => k.status === 'Ready').map(k => ({ name: k.name, sql: editingSQL[k.name] ?? sqlMap[k.name] ?? '' }))
     const pgConn = (() => { try { return JSON.parse(sessionStorage.getItem('aurum_pg_conn') || 'null') } catch { return null } })()
 
+    // Resolve base_name: prefer stored value, fall back to project name, then DB name
+    const resolveBaseName = () => {
+      const stored = sessionStorage.getItem('aurum_base_name')
+      if (stored && stored !== 'product_sales_transactions') return stored
+      const projectName = sessionStorage.getItem('aurum_project_name') || ''
+      if (projectName) {
+        return projectName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+      }
+      const pgCfg = (() => { try { return JSON.parse(sessionStorage.getItem('aurum_pg_conn') || 'null') } catch { return null } })()
+      if (pgCfg?.database) {
+        return pgCfg.database.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+      }
+      return 'dataset'
+    }
+    const baseName = resolveBaseName()
+
     try {
       const res = await fetch(`${API}/gold/execute`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body:    JSON.stringify({ project_id: sessionStorage.getItem('aurum_project_id') || null, requirement, base_name: sessionStorage.getItem('aurum_base_name') || null, kpis: finalKpis, pg_conn: pgConn }),
+        body:    JSON.stringify({ project_id: sessionStorage.getItem('aurum_project_id') || null, requirement, base_name: baseName, kpis: finalKpis, pg_conn: pgConn }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const d = await res.json()

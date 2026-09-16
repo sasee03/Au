@@ -4,6 +4,7 @@ All Pydantic request/response schemas for AURUM.
 from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -17,7 +18,7 @@ class ProjectCreate(BaseModel):
 
 
 class ProjectOut(BaseModel):
-    project_id: str
+    project_id: UUID
     name: str
     domain: Optional[str]
     description: Optional[str]
@@ -28,7 +29,6 @@ class ProjectOut(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 # ── PostgreSQL connection ─────────────────────────────────────────────────────
 

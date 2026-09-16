@@ -18,19 +18,52 @@ export default function ReportPage() {
     const getJ = (k, fallback) => { try { return JSON.parse(get(k) || 'null') ?? fallback } catch { return fallback } }
 
     const source      = get('aurum_source') || 'csv'
-    const baseName    = get('aurum_base_name') || get('aurum_dataset') || 'dataset'
-    const bronzeTable = get('aurum_bronze_table') || `bronze.${baseName}_bronze`
+
+    // Resolve base_name safely — never use a stale product_sales_transactions value
+    const rawBase = get('aurum_base_name') || get('aurum_dataset') || ''
     const projectName = get('aurum_project_name') || `Project ${projectId?.slice(0,8)}`
+    const resolvedBase = (() => {
+      if (rawBase && rawBase !== 'product_sales_transactions') return rawBase
+      if (projectName && !projectName.startsWith('Project ')) {
+        return projectName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+      }
+      const pgCfg = (() => { try { return JSON.parse(get('aurum_pg_conn') || 'null') } catch { return null } })()
+      if (pgCfg?.database) return pgCfg.database.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+      return 'dataset'
+    })()
+
+    const baseName    = resolvedBase
+    const bronzeTable = get('aurum_bronze_table') || `bronze.${baseName}_bronze`
     const selectedTables = getJ('aurum_selected_tables', [baseName])
     const bronzeSchema   = getJ('aurum_bronze_schema', [])
 
-    // Silver results (set by SilverValidationPage after /silver/execute)
-    const silverResult = getJ('aurum_silver_result', null)
-    const bronzeRows   = silverResult?.bronze_rows ?? 0
-    const silverRows   = silverResult?.silver_rows ?? 0
-    const affected     = silverResult?.affected ?? 0
-    const pctChange    = silverResult?.pct_change ?? '0.00%'
-    const silverRules  = silverResult?.rules ?? []
+    // Silver results — read all executed tables from aurum_silver_results
+    const silverResults  = getJ('aurum_silver_results', null)  // { [bronzeTable]: { bronze_rows, silver_rows, ... } }
+    const silverResult   = getJ('aurum_silver_result', null)   // legacy single-table fallback
+
+    // Aggregate across all executed silver tables
+    let bronzeRows = 0, silverRows = 0, affected = 0, silverRules = [], silverTableNames = []
+    if (silverResults && Object.keys(silverResults).length > 0) {
+      for (const [bronzeTbl, res] of Object.entries(silverResults)) {
+        bronzeRows  += res.bronze_rows ?? 0
+        silverRows  += res.silver_rows ?? 0
+        affected    += res.affected    ?? 0
+        if (res.rules?.length) silverRules.push(...res.rules)
+        // Derive the silver table name from the bronze table name
+        const silverTbl = bronzeTbl.replace('_bronze', '_silver')
+        silverTableNames.push(`silver.${silverTbl}`)
+      }
+    } else if (silverResult) {
+      bronzeRows  = silverResult.bronze_rows ?? 0
+      silverRows  = silverResult.silver_rows ?? 0
+      affected    = silverResult.affected    ?? 0
+      silverRules = silverResult.rules       ?? []
+      silverTableNames = [`silver.${baseName}_silver`]
+    }
+
+    const pctChange = bronzeRows > 0
+      ? `${((affected / bronzeRows) * -100).toFixed(2)}%`
+      : '0.00%'
 
     // Gold results (set by GoldLayerPage after /gold/execute)
     const goldResult     = getJ('aurum_gold_result', null)
@@ -49,6 +82,7 @@ export default function ReportPage() {
       bronzeRows,
       silverRows,
       silverRules,
+      silverTableNames,
       affected,
       pctChange,
       goldTables,
@@ -104,9 +138,6 @@ export default function ReportPage() {
             <div style={{ display:'flex', gap:8, marginTop:8, flexWrap:'wrap' }}>
               <span style={{ background:'#1e1f2e', border:'1px solid #2a2b3d', borderRadius:6, padding:'3px 10px', fontSize:11.5, color:'#8b8ca8' }}>
                 Source: {data.source.toUpperCase()}
-              </span>
-              <span style={{ background:'#1e1f2e', border:'1px solid #2a2b3d', borderRadius:6, padding:'3px 10px', fontSize:11.5, color:'#818cf8' }}>
-                base: {data.baseName}
               </span>
               {data.selectedTables.map(t => (
                 <span key={t} style={{ background:'#1e1f2e', border:'1px solid #2a2b3d', borderRadius:6, padding:'3px 10px', fontSize:11.5, color:'#8b8ca8' }}>
@@ -178,7 +209,13 @@ export default function ReportPage() {
                   </div>
                   <p style={{ color:'#8b8ca8', fontSize:12.5, marginTop:3 }}>
                     {data.silverRules.length} cleaning rule{data.silverRules.length !== 1 ? 's' : ''} applied via SQL CTE pipeline.
-                    Output written to <code style={{ color:'#818cf8', fontSize:11 }}>silver.{data.baseName}_silver</code>.
+                    Output written to{' '}
+                    {data.silverTableNames.length > 0
+                      ? data.silverTableNames.map((t, i) => (
+                          <code key={i} style={{ color:'#818cf8', fontSize:11, marginRight:6 }}>{t}</code>
+                        ))
+                      : <code style={{ color:'#818cf8', fontSize:11 }}>silver schema</code>
+                    }.
                   </p>
                 </div>
                 <div style={{ display:'flex', gap:18, textAlign:'right', flexShrink:0 }}>
@@ -282,10 +319,35 @@ export default function ReportPage() {
           <div style={{ background:'#1a1b25', border:'1px solid #2a2b3d', borderRadius:10, padding:'16px 18px', marginBottom:22 }}>
             <div style={{ fontSize:12, fontWeight:600, color:'#e8e9f0', marginBottom:12 }}>Database Table Reference</div>
             <div style={{ display:'grid', gridTemplateColumns:'80px 1fr', gap:'6px 16px', fontSize:12 }}>
-              <span style={{ color:'#f59e0b', fontWeight:600 }}>Bronze</span>
-              <code style={{ color:'#e8e9f0' }}>{data.bronzeTable}</code>
-              <span style={{ color:'#818cf8', fontWeight:600 }}>Silver</span>
-              <code style={{ color:'#e8e9f0' }}>silver.{data.baseName}_silver</code>
+              {/* Show all bronze tables (one per selected source table) */}
+              {data.selectedTables.length > 1
+                ? data.selectedTables.map(t => {
+                    const bare = t.replace(/^bronze\./, '')
+                    const bronzeName = bare.endsWith('_bronze') ? bare : `${bare}_bronze`
+                    return (
+                      <>
+                        <span key={`lbl-${t}`} style={{ color:'#f59e0b', fontWeight:600 }}>Bronze</span>
+                        <code key={`val-${t}`} style={{ color:'#e8e9f0' }}>bronze.{bronzeName}</code>
+                      </>
+                    )
+                  })
+                : <>
+                    <span style={{ color:'#f59e0b', fontWeight:600 }}>Bronze</span>
+                    <code style={{ color:'#e8e9f0' }}>{data.bronzeTable}</code>
+                  </>
+              }
+              {data.silverTableNames.length > 0
+                ? data.silverTableNames.map(t => (
+                    <>
+                      <span key={`lbl-${t}`} style={{ color:'#818cf8', fontWeight:600 }}>Silver</span>
+                      <code key={`val-${t}`} style={{ color:'#e8e9f0' }}>{t}</code>
+                    </>
+                  ))
+                : <>
+                    <span style={{ color:'#818cf8', fontWeight:600 }}>Silver</span>
+                    <code style={{ color:'#e8e9f0' }}>silver.{data.baseName}_silver</code>
+                  </>
+              }
               {data.goldTables.map(t => (
                 <>
                   <span key={`lbl-${t}`} style={{ color:'#f59e0b', fontWeight:600 }}>Gold</span>

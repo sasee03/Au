@@ -30,7 +30,7 @@ const iconSettings = (
 )
 
 const Logo = () => (
-  <div style={{ width:30, height:30, borderRadius:7, flexShrink:0, background:'#6366f1', display:'flex', alignItems:'center', justifyContent:'center' }}>
+  <div style={{ width:30, height:30, borderRadius:7, flexShrink:0, background:'#f5822a', display:'flex', alignItems:'center', justifyContent:'center' }}>
     <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
       {/* girdle top bar - solid white outline */}
       <polygon points="3,7 9,3 15,7" fill="none" stroke="white" strokeWidth="0.8"/>
@@ -66,31 +66,31 @@ function ProjectsModal({ onClose }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}
       onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width:'56vw', maxWidth:680, maxHeight:'72vh', background:'#13141c', border:'1px solid #2a2b3d', borderRadius:14, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-        <div style={{ padding:'16px 24px', borderBottom:'1px solid #1e1f2e', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <span style={{ fontWeight:700, fontSize:15, color:'#e8e9f0' }}>Existing Projects</span>
-          <button onClick={onClose} style={{ background:'none', border:'none', color:'#8b8ca8', fontSize:20, cursor:'pointer', lineHeight:1 }}>×</button>
+      <div onClick={e => e.stopPropagation()} style={{ width:'56vw', maxWidth:680, maxHeight:'72vh', background:'#fffdf9', border:'1px solid #e6d7c7', borderRadius:14, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        <div style={{ padding:'16px 24px', borderBottom:'1px solid #f3e4d3', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <span style={{ fontWeight:700, fontSize:15, color:'#1d2b36' }}>Existing Projects</span>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'#6f756f', fontSize:20, cursor:'pointer', lineHeight:1 }}>×</button>
         </div>
         <div style={{ overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:8 }}>
-          {loading && <p style={{ color:'#5a5b72', padding:16, fontSize:13 }}>Loading…</p>}
+          {loading && <p style={{ color:'#8b8b83', padding:16, fontSize:13 }}>Loading…</p>}
           {!loading && projects.length === 0 && (
-            <p style={{ color:'#5a5b72', padding:16, fontSize:13 }}>No projects yet. Create your first one from the dashboard.</p>
+            <p style={{ color:'#8b8b83', padding:16, fontSize:13 }}>No projects yet. Create your first one from the dashboard.</p>
           )}
           {projects.map(p => (
             <button key={p.project_id}
               onClick={() => { onClose(); navigate(`/project/${slugify(p.name)}/connect`) }}
-              style={{ background:'#1a1b25', border:'1px solid #252636', borderRadius:10, padding:'14px 18px', textAlign:'left', cursor:'pointer', transition:'border-color 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#6366f1'}
+              style={{ background:'#ffffff', border:'1px solid #eadbca', borderRadius:10, padding:'14px 18px', textAlign:'left', cursor:'pointer', transition:'border-color 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = '#f5822a'}
               onMouseLeave={e => e.currentTarget.style.borderColor = '#252636'}
             >
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
-                  <div style={{ fontWeight:600, fontSize:14, color:'#e8e9f0', marginBottom:3 }}>{p.name}</div>
-                  <div style={{ fontSize:11.5, color:'#5a5b72' }}>
+                  <div style={{ fontWeight:600, fontSize:14, color:'#1d2b36', marginBottom:3 }}>{p.name}</div>
+                  <div style={{ fontSize:11.5, color:'#8b8b83' }}>
                     {p.domain} · {p.environment} · {new Date(p.created_at).toLocaleString()}
                   </div>
                 </div>
-                <span style={{ fontSize:11, color:'#6366f1', flexShrink:0, marginLeft:16 }}>Open →</span>
+                <span style={{ fontSize:11, color:'#d86518', flexShrink:0, marginLeft:16 }}>Open →</span>
               </div>
             </button>
           ))}
@@ -112,9 +112,9 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside style={{ width:200, minHeight:'100vh', height:'100%', background:'#0f1018', borderRight:'1px solid #1e1f2e', display:'flex', flexDirection:'column', flexShrink:0 }}>
+      <aside style={{ width:200, minHeight:'100vh', height:'100%', background:'#fffaf3', borderRight:'1px solid #f3e4d3', display:'flex', flexDirection:'column', flexShrink:0 }}>
         {/* Logo */}
-        <div style={{ height:52, padding:'0 16px', flexShrink:0, display:'flex', alignItems:'center', gap:10, borderBottom:'1px solid #1e1f2e' }}>
+        <div style={{ height:52, padding:'0 16px', flexShrink:0, display:'flex', alignItems:'center', gap:10, borderBottom:'1px solid #f3e4d3' }}>
           <Logo />
           <span style={{ fontWeight:700, fontSize:15, color:'#e8e9f0', letterSpacing:'0.06em' }}>AURUM</span>
         </div>
@@ -124,12 +124,12 @@ export default function Sidebar() {
 
           <NavLink to="/" style={{
             display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:7, marginBottom:2,
-            color: isActive('/') ? '#e8e9f0' : '#8b8ca8',
-            background: isActive('/') ? 'rgba(99,102,241,0.15)' : 'transparent',
+            color: isActive('/') ? '#d86518' : '#6f756f',
+            background: isActive('/') ? 'rgba(245,130,42,0.15)' : 'transparent',
             fontWeight: isActive('/') ? 600 : 400,
             fontSize:13.5, textDecoration:'none', transition:'all 0.15s',
           }}>
-            <span style={{ flexShrink:0, color: isActive('/') ? '#818cf8' : 'inherit' }}>{iconDashboard}</span>
+            <span style={{ flexShrink:0, color: isActive('/') ? '#f5822a' : 'inherit' }}>{iconDashboard}</span>
             Home
           </NavLink>
 
@@ -137,11 +137,11 @@ export default function Sidebar() {
           <button onClick={() => setShowProjects(true)} style={{
             width:'100%', display:'flex', alignItems:'center', gap:10, padding:'8px 10px',
             borderRadius:7, marginBottom:2, border:'none', cursor:'pointer',
-            background:'transparent', color:'#8b8ca8', fontWeight:400,
+            background:'transparent', color:'#6f756f', fontWeight:400,
             fontSize:13.5, textAlign:'left', transition:'all 0.15s',
           }}
-            onMouseEnter={e => { e.currentTarget.style.background='rgba(99,102,241,0.08)'; e.currentTarget.style.color='#e8e9f0' }}
-            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#8b8ca8' }}
+            onMouseEnter={e => { e.currentTarget.style.background='rgba(245,130,42,0.08)'; e.currentTarget.style.color='#1d2b36' }}
+            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#6f756f' }}
           >
             <span style={{ flexShrink:0 }}>{iconProjects}</span>
             <span style={{ flex:1 }}>Projects</span>
@@ -150,8 +150,8 @@ export default function Sidebar() {
 
           <NavLink to="/docs" style={({ isActive: a }) => ({
             display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:7, marginBottom:2,
-            color: a ? '#e8e9f0' : '#8b8ca8',
-            background: a ? 'rgba(99,102,241,0.15)' : 'transparent',
+            color: a ? '#d86518' : '#6f756f',
+            background: a ? 'rgba(245,130,42,0.15)' : 'transparent',
             fontWeight: a ? 600 : 400,
             fontSize:13.5, textDecoration:'none', transition:'all 0.15s',
           })}>
@@ -162,12 +162,12 @@ export default function Sidebar() {
         </nav>
 
         {/* Settings */}
-        <div style={{ padding:'8px 8px', borderTop:'1px solid #1e1f2e' }}>
+        <div style={{ padding:'8px 8px', borderTop:'1px solid #f3e4d3' }}>
           <NavLink to="/settings" style={({ isActive: a }) => ({
             display:'flex', alignItems:'center', gap:10, padding:'8px 10px',
             borderRadius:7, textDecoration:'none', fontSize:13.5, transition:'all 0.15s',
-            color: a ? '#e8e9f0' : '#8b8ca8',
-            background: a ? 'rgba(99,102,241,0.15)' : 'transparent',
+            color: a ? '#d86518' : '#6f756f',
+            background: a ? 'rgba(245,130,42,0.15)' : 'transparent',
           })}>
             <span style={{ flexShrink:0 }}>{iconSettings}</span>
             Settings

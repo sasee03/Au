@@ -81,11 +81,75 @@ Source Data  →  Bronze Layer  →  Silver Layer  →  Gold Layer  →  Report
 - Review and edit each KPI's SQL
 - Click **Approve & Build Gold** → Gold tables created, report triggered
 
-### 9. Report (`/project/:id/report`)
-- Full pipeline summary: Ingestion → Bronze → Silver → Gold
-- Row counts, transformation effects, data quality score
-- Gold layer preview data
-- Export as PDF
+### 7. Bronze Layer (`/project/:id/bronze`)
+- **Raw Data Inspection** — Displays the exact ingested tables with no transformations applied
+- **Table Tabs** — Click between each selected table to inspect structure and sample rows
+- **Information Schema** — Right panel shows column names, detected types, and constraints (e.g., `order_id: VARCHAR`, `order_date: TIMESTAMP`)
+- **Row & Column Counts** — Header displays total rows ingested and column count per table
+- **Metadata Columns** — Auto-added columns: `ingested_at` (ingestion timestamp), `source_file` (source name), `_bronze_hash` (row hash for deduplication logic)
+- **Action** — Click **Continue to Silver** to move to the cleaning phase
+
+---
+
+### 8. Silver Validation (`/project/:id/silver`)
+- **Rule Input Box** — Add data cleaning rules in plain English (e.g., "Remove rows where customer_id is null", "Cast order_date to YYYY-MM-DD", "Trim whitespace from all text columns")
+- **AI SQL Generation** — Click **Generate SQL** → AURUM sends rules + Bronze schema to the AI → Returns one `SELECT` statement per rule with `WHERE`, `CAST`, or `TRIM` clauses
+- **SQL Editor** — View and edit generated SQL directly; highlight errors or optimization opportunities before execution
+- **Dry-Run Preview** — Click **Approve** → System runs a `LIMIT 1000` preview showing cleaned data sample and row impact (e.g., "99,000 → 97,000 rows after NULL removal")
+- **Execution & Stats** — Click **Execute** → Full transformation runs; cards show rows ingested, rows output, rows removed, and % data loss
+- **Multi-Table Workflow** — After executing first table, button changes to "Next: [table_name]"; repeat for each selected table
+- **Continue to Gold** — Appears once all tables are executed; moves to KPI generation
+
+---
+
+### 9. Gold Layer (`/project/:id/gold`)
+- **Business Requirement Input** — Free-text box asking "What business KPIs do you need?" (e.g., "Executive sales dashboard showing revenue trends, top customers by order value, product performance by category, average delivery time")
+- **AI KPI Discovery** — Click **Generate KPI Plan** → AI reads Silver schema, identifies joinable tables, and suggests KPIs with aggregation SQL
+- **KPI List** — Left panel shows all discovered KPIs (e.g., "Total Revenue by Month", "Top 10 Customers by Spend", "Average Delivery Duration", "Orders by Status", "Revenue by Customer State")
+- **SQL Review & Edit** — Right panel displays SQL for selected KPI; fully editable before execution
+- **Join Logic** — AI auto-writes joins across Silver tables (e.g., `orders JOIN order_items ON order_id; JOIN customers ON customer_id`)
+- **Dry-Run & Build** — Click **Approve & Build Gold** → Executes all KPI SQL; creates one Gold table per KPI; returns row counts and first 100 rows of each result
+- **Gold Preview** — Below KPI list, shows sample data from the first Gold table (first 5 rows, key columns)
+- **Action** — Click **Generate Report** to proceed to the final summary
+
+---
+
+### 10. Report (`/project/:id/report`)
+- **Pipeline Summary Header** — Project name, domain, environment, run timestamp, and status badge (SUCCESS / WARNING / FAILED)
+- **Source Tables** — Lists all tables ingested into Bronze (e.g., olist_orders_dataset, olist_order_items_dataset, olist_customers_dataset)
+- **Summary Cards** — Key metrics in grid layout:
+  - Total rows ingested into Bronze
+  - Total rows in Silver output
+  - Rows removed by cleaning rules (count + %)
+  - Number of cleaning rules applied
+  - Number of KPIs generated
+  - Number of Gold tables created
+- **Layer Breakdown** — Three sections (Bronze, Silver, Gold) each showing:
+  - Layer name and description
+  - Table names and row counts
+  - Rules or KPIs applied with their descriptions
+- **Gold Table Reference** — Exact database table names for BI/dashboard connection (e.g., `gold.olist_orders_revenue_by_month`, `gold.olist_customers_top_10_spend`)
+- **Data Quality Score** — Composite score (0–100) based on: null removal rate, duplicate removal rate, type cast success rate
+- **Export PDF** — Button at top right; generates professional one-page summary with charts and table references
+- **Action** — Click **Back to Projects** or **Create New Pipeline** to start over
+
+---
+
+### 11. Projects Modal (`/projects`)
+- **Left Sidebar Link** — Clicking "Projects" from anywhere opens a full-page project list
+- **Project Grid** — Each project card shows:
+  - Project name (e.g., "Olist Retail")
+  - Business domain (e.g., Retail, Finance, Healthcare)
+  - Last run timestamp (e.g., "2 days ago")
+  - Status badge (PASS / WARNING / FAILED) with color coding (green / yellow / red)
+  - Row counts from last run (Bronze → Silver → Gold progression)
+- **Actions per Card** — Hover to reveal buttons:
+  - **Open** — Re-enter the project pipeline at the Report page
+  - **View Report** — Jump directly to the last run's report
+  - **Delete** — Remove project and all associated tables (with confirmation dialog)
+- **Create New Project** — Button at top right; returns to the New Project wizard
+- **Search & Filter** — Search box filters projects by name; domain tabs filter by business category (All / Retail / Finance / etc.)
+- **Empty State** — If no projects exist, shows hero message: "No pipelines yet. Click Create New Project to get started."
 
 ---
 

@@ -122,6 +122,16 @@ export default function DataConnectorsPage() {
       sessionStorage.setItem('aurum_pg_conn', JSON.stringify({
         host, port, database, schema, username, password, ssl
       }))
+
+      // Derive base_name from project name for postgres (no single CSV filename to use).
+      // e.g. "Olist Retail" → "olist_retail", "My Project" → "my_project"
+      const projectName = sessionStorage.getItem('aurum_project_name') || database || 'project'
+      const baseName = projectName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'project'
+      sessionStorage.setItem('aurum_base_name', baseName)
+
       navigate(`/project/${projectId}/select`)
     }
   }

@@ -38,12 +38,16 @@ async def _open_conn(pg_conn_cfg: dict | None) -> asyncpg.Connection | None:
 
 async def _fetch_silver_schema(pg_conn_cfg: dict | None) -> str:
     """
-    Introspect the silver schema and return a human-readable summary
-    for the AI prompt, e.g.:
-        silver.orders_silver (order_id BIGINT, customer_id TEXT, ...)
+    Introspect the silver schema in the AURUM processing DB and return a
+    human-readable summary for the AI prompt, e.g.:
+        silver.olist_orders_dataset_silver (order_id TEXT, order_date DATE, ...)
+
+    NOTE: pg_conn_cfg is the user's *source* database — we intentionally
+    ignore it here and always read from the AURUM DB where silver tables live.
     """
     conn = await _open_conn(pg_conn_cfg)
     if conn is None:
+        log.error("[gold] Cannot connect to AURUM DB — silver schema unavailable")
         return ""
 
     try:
@@ -54,6 +58,7 @@ async def _fetch_silver_schema(pg_conn_cfg: dict | None) -> str:
                ORDER BY table_name"""
         )
         if not tables:
+            log.warning("[gold] No tables found in silver schema — run Silver layer first")
             return ""
 
         lines = []
@@ -69,7 +74,9 @@ async def _fetch_silver_schema(pg_conn_cfg: dict | None) -> str:
             col_str = ", ".join(f"{c['column_name']} {c['data_type'].upper()}" for c in cols)
             lines.append(f"silver.{tbl} ({col_str})")
 
-        return "\n".join(lines)
+        schema_str = "\n".join(lines)
+        log.info(f"[gold] fetched {len(lines)} silver tables from AURUM DB")
+        return schema_str
     except Exception as e:
         log.warning(f"[gold] silver schema fetch error: {e}")
         return ""
@@ -89,10 +96,18 @@ async def generate_kpi_plan(
     Build the KPI plan using AI.
     Fetches real silver schema first; falls back to schema_info passed from frontend.
     """
-    # Try to get live silver schema
+    # Try to get live silver schema — always try AURUM DB directly,
+    # pg_conn_cfg is the *source* DB and is irrelevant here.
     live_schema = await _fetch_silver_schema(pg_conn_cfg)
     prompt_schema = live_schema or schema_info or ""
-    log.info(f"[gold] silver schema chars: {len(prompt_schema)}")
+
+    if not prompt_schema.strip():
+        raise RuntimeError(
+            "Silver schema is empty. Make sure you have executed the Silver layer "
+            "for all selected tables before generating the Gold KPI plan."
+        )
+
+    log.info(f"[gold] silver schema used:\n{prompt_schema}")
 
     prompt = build_gold_prompt(requirement, prompt_schema)
     log.info(f"[gold] prompt length: {len(prompt)} chars, calling AI…")

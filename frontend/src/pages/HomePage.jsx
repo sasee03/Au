@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar'
 
 const API = 'http://localhost:4000/api'
 
@@ -132,18 +131,16 @@ export default function HomePage() {
   }
 
   return (
-    <div style={{ display: 'flex', width: '100%', height: '100vh', background: '#0d0e14', overflow: 'hidden' }}>
-      <Sidebar />
-
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 60px', overflow: 'auto' }}>
+    <div style={{ width: '100%', height: '100vh', background: '#f7f1e8', overflow: 'hidden' }}>
+      <main style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: '112px 10% 36px', overflow: 'auto' }}>
         {/* Hero */}
-        <div style={{ textAlign: 'center', marginBottom: 48, width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: 68, width: '100%' }}>
           <p style={{ fontSize: 11, letterSpacing: '0.22em', color: '#5a5b72', textTransform: 'uppercase', marginBottom: 18 }}>
             Enterprise Data Quality Operating System
           </p>
           <h1 style={{
             fontSize: 80, fontWeight: 900, letterSpacing: '-3px', marginBottom: 14, lineHeight: 1,
-            background: 'linear-gradient(135deg, #ffffff 40%, #6366f1 100%)',
+            background: 'linear-gradient(135deg, #fffaf3 35%, #ffc08f 66%, #f5822a 100%)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'
           }}>AURUM</h1>
           <p style={{ fontSize: 14.5, color: '#8b8ca8', marginBottom: 36 }}>
@@ -152,30 +149,30 @@ export default function HomePage() {
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => navigate('/new-project')} style={{
-              background: '#6366f1', color: '#fff', border: 'none',
+              background: '#f5822a', color: '#fff', border: 'none',
               padding: '10px 22px', borderRadius: 8, fontWeight: 600, fontSize: 13.5,
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
             }}>+ New Project</button>
 
             <button onClick={() => setModal('existing')} style={{
-              background: 'transparent', color: '#c4c5d6', border: '1px solid #2a2b3d',
+              background: 'transparent', color: '#6f756f', border: '1px solid #f5822a',
               padding: '10px 18px', borderRadius: 8, fontWeight: 500, fontSize: 13.5, cursor: 'pointer'
             }}>Open Existing Project</button>
 
             <button onClick={() => setModal('recent')} style={{
-              background: 'transparent', color: '#c4c5d6', border: '1px solid #2a2b3d',
+              background: 'transparent', color: '#6f756f', border: '1px solid #f5822a',
               padding: '10px 18px', borderRadius: 8, fontWeight: 500, fontSize: 13.5, cursor: 'pointer'
             }}>Recent Runs</button>
 
             <button onClick={() => setModal('docs')} style={{
-              background: 'transparent', color: '#c4c5d6', border: '1px solid #2a2b3d',
+              background: 'transparent', color: '#6f756f', border: '1px solid #f5822a',
               padding: '10px 18px', borderRadius: 8, fontWeight: 500, fontSize: 13.5, cursor: 'pointer'
             }}>Documentation</button>
           </div>
         </div>
 
         {/* Recent Projects grid */}
-        <div style={{ width: '100%', maxWidth: 860 }}>
+        <div style={{ width: '100%', maxWidth: 1210 }}>
           <p style={{ fontSize: 10.5, letterSpacing: '0.16em', color: '#5a5b72', textTransform: 'uppercase', marginBottom: 12 }}>
             Recent Projects
           </p>
@@ -186,15 +183,15 @@ export default function HomePage() {
                 <button key={p.project_id || p.name}
                   onClick={() => navigate(`/project/${slugify(p.name)}/bronze`)}
                   style={{
-                    background: '#1a1b25', border: '1px solid #252636',
+                    background: '#ffffff', border: '1px solid #747985',
                     borderRadius: 10, padding: '16px', textAlign: 'left', cursor: 'pointer',
                     transition: 'border-color 0.15s, background 0.15s'
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.background = '#1e1f2d' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#252636'; e.currentTarget.style.background = '#1a1b25' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#f5822a'; e.currentTarget.style.background = '#fffaf3' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#747985'; e.currentTarget.style.background = '#ffffff' }}
                 >
-                  <div style={{ fontWeight: 600, fontSize: 13.5, color: '#e8e9f0', marginBottom: 4 }}>{p.name}</div>
-                  <div style={{ fontSize: 11.5, color: '#5a5b72', marginBottom: 14 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13.5, color: '#1d2b36', marginBottom: 4 }}>{p.name}</div>
+                  <div style={{ fontSize: 11.5, color: '#8b8b83', marginBottom: 14 }}>
                     {p.created_at ? timeAgo(p.created_at) : '—'} · {p.domain || '—'}
                   </div>
                   <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 5, ...(statusStyle[s] || statusStyle.PASS) }}>

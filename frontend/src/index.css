@@ -5,24 +5,24 @@
 }
 
 :root {
-  --bg-primary: #0d0e14;
-  --bg-secondary: #13141c;
-  --bg-card: #1a1b25;
-  --bg-card-hover: #1f2030;
-  --bg-input: #1e1f2e;
-  --border: #2a2b3d;
-  --border-light: #333450;
-  --text-primary: #e8e9f0;
-  --text-secondary: #8b8ca8;
-  --text-muted: #5a5b72;
-  --accent: #6366f1;
-  --accent-hover: #7577f3;
-  --accent-light: rgba(99, 102, 241, 0.15);
-  --accent-border: rgba(99, 102, 241, 0.4);
+  --bg-primary: #f7f1e8;
+  --bg-secondary: #fffaf3;
+  --bg-card: #ffffff;
+  --bg-card-hover: #fff7ed;
+  --bg-input: #fffdf9;
+  --border: #e6d7c7;
+  --border-light: #d8c8b7;
+  --text-primary: #1d2b36;
+  --text-secondary: #6f756f;
+  --text-muted: #8b8b83;
+  --accent: #f5822a;
+  --accent-hover: #ff9b4a;
+  --accent-light: rgba(245, 130, 42, 0.15);
+  --accent-border: rgba(245, 130, 42, 0.4);
   --green: #22c55e;
   --green-bg: rgba(34, 197, 94, 0.15);
-  --yellow: #f59e0b;
-  --yellow-bg: rgba(245, 158, 11, 0.15);
+  --yellow: #f5822a;
+  --yellow-bg: rgba(245, 130, 42, 0.15);
   --red: #ef4444;
   --red-bg: rgba(239, 68, 68, 0.15);
   --blue: #3b82f6;
@@ -61,7 +61,7 @@ input, textarea, select {
 }
 
 select option {
-  background: #1a1b25;
+  background: #ffffff;
   color: var(--text-primary);
 }
 
@@ -73,5 +73,43 @@ a {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2a2b3d; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #333450; }
+::-webkit-scrollbar-thumb { background: #e6d7c7; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #d8c8b7; }
+
+/* Inline legacy theme values are overridden here so every existing screen
+   inherits the same light palette without changing its component structure. */
+[style*="#0d0e14"], [style*="rgb(13, 14, 20)"] { background-color: #f7f1e8 !important; }
+[style*="#0f1018"], [style*="rgb(15, 16, 24)"] { background-color: #fffaf3 !important; }
+[style*="#13141c"], [style*="rgb(19, 20, 28)"] { background-color: #fffdf9 !important; }
+[style*="#1a1b25"], [style*="rgb(26, 27, 37)"] { background-color: #ffffff !important; }
+[style*="#1e1f2e"], [style*="rgb(30, 31, 46)"] { background-color: #f3e4d3 !important; border-color: #f3e4d3 !important; }
+[style*="#2a2b3d"], [style*="rgb(42, 43, 61)"] { border-color: #e6d7c7 !important; }
+[style*="#333450"], [style*="rgb(51, 52, 80)"] { border-color: #d8c8b7 !important; }
+[style*="#e8e9f0"], [style*="rgb(232, 233, 240)"] { color: #1d2b36 !important; }
+[style*="#c4c5d6"], [style*="rgb(196, 197, 214)"] { color: #6f756f !important; }
+[style*="#8b8ca8"], [style*="rgb(139, 140, 168)"] { color: #6f756f !important; }
+[style*="#5a5b72"], [style*="rgb(90, 91, 114)"] { color: #8b8b83 !important; }
+[style*="#3a3b52"], [style*="rgb(58, 59, 82)"] { color: #a49b90 !important; }
+[style*="#4a4c8a"], [style*="rgb(74, 76, 138)"] { background-color: #f0c5a3 !important; color: #8a4a1f !important; }
+[style*="#6366f1"], [style*="rgb(99, 102, 241)"] {
+  color: #d86518 !important;
+  border-color: #f5822a !important;
+}
+[style*="background: rgb(99, 102, 241)"], [style*="background-color: rgb(99, 102, 241)"] {
+  background-color: #f5822a !important;
+  color: #ffffff !important;
+}
+[style*="#818cf8"], [style*="rgb(129, 140, 248)"] { color: #d86518 !important; }
+[style*="#7577f3"], [style*="rgb(117, 119, 243)"] { color: #f5822a !important; }
+[style*="rgba(99,102,241"], [style*="rgba(99, 102, 241"] {
+  background-color: rgba(245, 130, 42, 0.15) !important;
+  border-color: rgba(245, 130, 42, 0.4) !important;
+}
+[style*="border-radius:10px"], [style*="border-radius: 10px"] {
+  box-shadow: 0 8px 24px rgba(29, 43, 54, 0.08) !important;
+}
+button[style*="#2a2b3d"], button[style*="rgb(42, 43, 61)"] {
+  border-color: #f5822a !important;
+}
+svg[stroke="#5a5b72"] { stroke: #8b8b83 !important; }
+svg circle[fill="#5a5b72"] { fill: #8b8b83 !important; }

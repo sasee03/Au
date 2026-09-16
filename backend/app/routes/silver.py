@@ -1,4 +1,5 @@
 import logging
+import asyncpg
 from fastapi import APIRouter, HTTPException, Request
 from app.models.schemas import (
     SilverGenerateRequest, SilverGenerateResponse,
@@ -7,6 +8,7 @@ from app.models.schemas import (
     SqlPerRule, TransformEffect,
 )
 from app.services import silver_service as svc
+from app.config import settings
 
 router = APIRouter()
 log    = logging.getLogger("aurum.silver_route")
@@ -82,3 +84,77 @@ async def execute_sql(body: SilverExecuteRequest):
     except Exception as e:
         log.exception(f"[silver/execute] ERROR: {e}")
         raise HTTPException(500, str(e))
+
+
+@router.get("/schema")
+async def get_silver_schema(tables: str = ""):
+    """
+    Return the current silver schema as a human-readable string.
+    Used by the Gold layer to get exact table and column names for AI prompting.
+    Format: silver.<table_name> (col1 TYPE, col2 TYPE, ...)
+
+    Optional query param ?tables=table1,table2 to filter to specific base names.
+    This prevents stale tables from previous projects polluting the schema.
+    """
+    # Parse optional filter — strip schema prefix and _silver suffix to get base names
+    filter_bases: set[str] = set()
+    if tables.strip():
+        for t in tables.split(","):
+            t = t.strip().lower()
+            t = t.replace("silver.", "").replace("bronze.", "")
+            t = t.removesuffix("_silver").removesuffix("_bronze")
+            if t:
+                filter_bases.add(t)
+
+    try:
+        conn = await asyncpg.connect(
+            host=settings.AURUM_DB_HOST,
+            port=settings.AURUM_DB_PORT,
+            database=settings.AURUM_DB_NAME,
+            user=settings.AURUM_DB_USER,
+            password=settings.AURUM_DB_PASSWORD,
+            timeout=10,
+        )
+        try:
+            all_tables = await conn.fetch(
+                """SELECT table_name
+                   FROM information_schema.tables
+                   WHERE table_schema = 'silver'
+                   ORDER BY table_name"""
+            )
+            if not all_tables:
+                return {"schema_info": "", "tables": []}
+
+            lines = []
+            table_names = []
+            for t in all_tables:
+                tbl = t["table_name"]  # e.g. olist_orders_dataset_silver
+
+                # Apply filter if provided: match by base name (strip _silver suffix)
+                if filter_bases:
+                    base = tbl.removesuffix("_silver")
+                    if base not in filter_bases:
+                        log.info(f"[silver/schema] skipping {tbl} (not in session selection)")
+                        continue
+
+                table_names.append(f"silver.{tbl}")
+                cols = await conn.fetch(
+                    """SELECT column_name, data_type
+                       FROM information_schema.columns
+                       WHERE table_schema = 'silver' AND table_name = $1
+                       ORDER BY ordinal_position""",
+                    tbl,
+                )
+                col_str = ", ".join(
+                    f"{c['column_name']} {c['data_type'].upper()}" for c in cols
+                )
+                lines.append(f"silver.{tbl} ({col_str})")
+
+            schema_info = "\n".join(lines)
+            log.info(f"[silver/schema] returning {len(lines)} tables (filter={filter_bases or 'none'})")
+            return {"schema_info": schema_info, "tables": table_names}
+        finally:
+            await conn.close()
+    except Exception as e:
+        log.warning(f"[silver/schema] DB error: {e}")
+        raise HTTPException(500, f"Could not fetch silver schema: {e}")
