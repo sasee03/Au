@@ -48,7 +48,7 @@ You do not need to write any SQL yourself. AURUM handles the SQL generation. You
           'Enter a name for your dataset in the Dataset Name field.',
           'Drag and drop your CSV file onto the upload area, or click to browse.',
           'Choose the delimiter (comma, tab, semicolon, or pipe) and encoding if needed.',
-          'Click "Configure Pipeline →". AURUM immediately reads the file and creates a copy of your data in the database.',
+          'Click "Continue to Select →". AURUM immediately reads the file and creates a copy of your data in the database.',
         ],
       },
       {
@@ -63,15 +63,11 @@ You do not need to write any SQL yourself. AURUM handles the SQL generation. You
     ],
   },
   {
-    id: 'pipeline-config',
-    title: 'Configure Pipeline',
-    content: `After connecting your data, AURUM shows you the Configure Pipeline page. This is a read-only overview of what the three layers will do — Bronze, Silver, and Gold — and the six steps that make up the pipeline.
+    id: 'bronze-ingestion',
+    title: 'Bronze Ingestion',
+    content: `After connecting your data, the Select page lists the tables available for this run. Select the tables you want to process and click Continue. PostgreSQL tables are copied into Bronze at that point; CSV files were already copied when they were uploaded.
 
-Nothing has been executed yet at this point. This page gives you a chance to review before committing.
-
-When you are ready, click "Start Pipeline → Ingest to Bronze". AURUM copies your selected tables into the Bronze layer. For PostgreSQL sources this happens now. For CSV this already happened when you uploaded the file.
-
-Once the ingestion completes, AURUM automatically opens the Bronze Layer page.`,
+Once ingestion completes, AURUM automatically opens the Bronze Layer page, where you can review the raw data and run a data quality check.`,
   },
   {
     id: 'bronze-layer',

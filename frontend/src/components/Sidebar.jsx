@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 const API = 'http://localhost:4000/api'
 
@@ -26,6 +26,12 @@ const iconSettings = (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="3"/>
     <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/>
+  </svg>
+)
+const iconQuality = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 3v18h18"/>
+    <path d="m7 14 4-4 4 3 6-7"/>
   </svg>
 )
 
@@ -101,9 +107,24 @@ function ProjectsModal({ onClose }) {
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-export default function Sidebar() {
+export default function Sidebar({ onQuality, qualityActive = false }) {
   const { pathname } = useLocation()
+  const { projectId } = useParams()
+  const navigate = useNavigate()
   const [showProjects, setShowProjects] = useState(false)
+
+  const openQualityReport = () => {
+    if (onQuality) {
+      onQuality()
+      return
+    }
+    const activeProjectId = projectId || sessionStorage.getItem('aurum_project_id')
+    if (activeProjectId) {
+      navigate(`/project/${activeProjectId}/bronze?view=quality`)
+    } else {
+      setShowProjects(true)
+    }
+  }
 
   const isActive = (to) => {
     if (to === '/') return pathname === '/'
@@ -146,6 +167,18 @@ export default function Sidebar() {
             <span style={{ flexShrink:0 }}>{iconProjects}</span>
             <span style={{ flex:1 }}>Projects</span>
             <span style={{ fontSize:11, color:'#5a5b72' }}>→</span>
+          </button>
+
+          <button onClick={openQualityReport} style={{
+            width:'100%', display:'flex', alignItems:'center', gap:10, padding:'8px 10px',
+            borderRadius:7, marginBottom:2, border:'none', cursor:'pointer',
+            background: qualityActive ? 'rgba(245,130,42,0.15)' : 'transparent',
+            color: qualityActive ? '#d86518' : '#6f756f',
+            fontWeight: qualityActive ? 600 : 400,
+            fontSize:13.5, textAlign:'left', transition:'all 0.15s',
+          }}>
+            <span style={{ flexShrink:0 }}>{iconQuality}</span>
+            Quality Report
           </button>
 
           <NavLink to="/docs" style={({ isActive: a }) => ({

@@ -4,8 +4,8 @@ import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 
 const API = 'http://localhost:4000/api'
-const TABS = ['Connect','Select','Configure Pipeline','Bronze Layer','Silver Layer','Gold Layer','Report']
-const TAB_ROUTES = { Connect:'connect', Select:'select', 'Configure Pipeline':'pipeline-config', 'Bronze Layer':'bronze', 'Silver Layer':'silver', 'Gold Layer':'gold', Report:'report' }
+const TABS = ['Connect','Select','Bronze Layer','Silver Layer','Gold Layer','Report']
+const TAB_ROUTES = { Connect:'connect', Select:'select', 'Bronze Layer':'bronze', 'Silver Layer':'silver', 'Gold Layer':'gold', Report:'report' }
 
 const connectors = [
   { id: 'csv',      label: 'Local CSV',   abbr: 'Cs' },
@@ -42,6 +42,7 @@ export default function DataConnectorsPage() {
   const [firstRow,      setFirstRow]    = useState(true)
   const [dragOver,      setDragOver]    = useState(false)
   const [uploading,     setUploading]   = useState(false)
+  const [uploadError,   setUploadError] = useState('')
 
   // Postgres
   const [host,          setHost]       = useState('localhost')
@@ -67,7 +68,7 @@ export default function DataConnectorsPage() {
   const onFocus = e => e.target.style.borderColor = '#6366f1'
   const onBlur  = e => e.target.style.borderColor = '#2a2b3d'
 
-  // ── CSV: upload file then go to pipeline-config ──────────────────
+  // ── CSV: upload file then go to table selection ──────────────────
   const handleFileChange = e => {
     const f = e.target.files?.[0]
     if (f) { setCsvFile(f); setDatasetName(prev => prev || f.name.replace('.csv', '')) }
@@ -80,6 +81,7 @@ export default function DataConnectorsPage() {
 
   const handleConfigurePipeline = async () => {
     if (selected === 'csv') {
+      setUploadError('')
       sessionStorage.setItem('aurum_source', 'csv')
       sessionStorage.setItem('aurum_dataset', datasetName || 'dataset')
       // Clear any stale table/schema data from a previous session
@@ -98,18 +100,27 @@ export default function DataConnectorsPage() {
           fd.append('encoding', encoding)
           fd.append('first_row_header', firstRow)
           fd.append('project_id', sessionStorage.getItem('aurum_project_id') || '')
-          const res = await fetch(`${API}/bronze/upload`, { method: 'POST', body: fd }).catch(() => null)
-          if (res?.ok) {
-            const d = await res.json()
+          const dictionaryConnection = sessionStorage.getItem('aurum_pg_conn')
+          if (dictionaryConnection) fd.append('connection', dictionaryConnection)
+          try {
+            const res = await fetch(`${API}/bronze/upload`, { method: 'POST', body: fd })
+            const responseText = await res.text()
+            let d
+            try { d = JSON.parse(responseText) }
+            catch { d = { detail: responseText } }
+            if (!res.ok) throw new Error(d.detail || 'CSV upload failed')
             // Store bronze table name and base_name for downstream pages
             if (d.bronze_table) sessionStorage.setItem('aurum_bronze_table', d.bronze_table)
-            if (d.base_name)    sessionStorage.setItem('aurum_base_name',    d.base_name)
+            if (d.base_name)    sessionStorage.setItem('aurum_base_name', d.base_name)
             sessionStorage.setItem('aurum_schema_info', JSON.stringify(d.schema_cols || []))
+          } catch (error) {
+            setUploadError(error instanceof Error ? error.message : 'CSV upload failed')
+            return
           }
         } finally { setUploading(false) }
       }
-      // CSV → pipeline-config (no table selection needed)
-      navigate(`/project/${projectId}/pipeline-config`)
+      // CSV is already ingested on this page; selection still confirms the run.
+      navigate(`/project/${projectId}/select`)
     } else {
       // Postgres → store full conn including password, then go to /select to pick tables
       // Clear stale table/schema data from any previous session
@@ -245,6 +256,7 @@ export default function DataConnectorsPage() {
                   <input type="checkbox" checked={firstRow} onChange={e => setFirstRow(e.target.checked)} style={{ width: 15, height: 15, accentColor: '#6366f1' }} />
                   First row is header
                 </label>
+                {uploadError && <div role="alert" style={{ color: '#fca5a5', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '9px 11px', fontSize: 12 }}>{uploadError}</div>}
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button style={{ background: '#1a1b25', color: '#e8e9f0', border: '1px solid #2a2b3d', padding: '8px 16px', borderRadius: 7, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                     {iconSearch} Preview File
@@ -252,7 +264,7 @@ export default function DataConnectorsPage() {
                   <button onClick={handleConfigurePipeline} disabled={uploading} style={{
                     background: uploading ? '#4a4c8a' : '#6366f1', color: '#fff', border: 'none',
                     padding: '8px 18px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: uploading ? 'default' : 'pointer'
-                  }}>{uploading ? 'Uploading…' : 'Configure Pipeline →'}</button>                </div>
+                  }}>{uploading ? 'Uploading…' : 'Continue to Select →'}</button>                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

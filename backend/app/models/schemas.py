@@ -63,9 +63,24 @@ class PgConnTestResult(BaseModel):
 
 class BronzeIngestRequest(BaseModel):
     project_id: Optional[str] = None
-    tables: List[str] = []
+    tables: List[str] = Field(default_factory=list)
     source: str = "csv"                       # "csv" | "postgres"
     pg_conn: Optional[PgConnConfig] = None
+
+
+class BronzeDictionaryRequest(BaseModel):
+    pg_conn: PgConnConfig
+    table: Optional[str] = None
+
+
+class DQReportRequest(BaseModel):
+    project_id: str
+    tables: List[str]
+    pg_conn: Optional[PgConnConfig] = None
+
+
+class DQJobRequest(DQReportRequest):
+    pass
 
 
 class BronzePreviewResponse(BaseModel):
@@ -200,3 +215,43 @@ class ReportResponse(BaseModel):
     stages: List[PipelineStage]
     summary: ReportSummary
     gold_preview: List[Dict[str, Any]]
+
+
+class TableQuality(BaseModel):
+    table_name: str
+    score: float
+    passed_checks: int
+    total_checks: int
+    issue_count: int
+
+
+class DQIssue(BaseModel):
+    severity: str
+    table_name: str
+    column_name: str
+    rule: str
+    count: int
+    inferred_type: str
+    semantic_type: Optional[str] = None
+    total_checked: int
+    bad_pct: float
+    failed_rows: List[Dict[str, Any]]
+
+
+class DQCheckResult(DQIssue):
+    check_name: str
+    bad_records: int
+    passed: bool
+
+
+class DQReportResponse(BaseModel):
+    dq_score: float
+    passed_checks: int
+    total_checks: int
+    issues_count: int
+    warnings_count: int
+    rows_tested: int
+    last_run: str
+    table_quality: List[TableQuality]
+    issues: List[DQIssue]
+    check_results: List[DQCheckResult]

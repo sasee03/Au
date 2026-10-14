@@ -4,8 +4,8 @@ import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 
 const API = 'http://localhost:4000/api'
-const TABS = ['Connect','Select','Configure Pipeline','Bronze Layer','Silver Layer','Gold Layer','Report']
-const TAB_ROUTES = { Connect:'connect', Select:'select', 'Configure Pipeline':'pipeline-config', 'Bronze Layer':'bronze', 'Silver Layer':'silver', 'Gold Layer':'gold', Report:'report' }
+const TABS = ['Connect','Select','Bronze Layer','Silver Layer','Gold Layer','Report']
+const TAB_ROUTES = { Connect:'connect', Select:'select', 'Bronze Layer':'bronze', 'Silver Layer':'silver', 'Gold Layer':'gold', Report:'report' }
 
 export default function GoldLayerPage() {
   const { projectId } = useParams()

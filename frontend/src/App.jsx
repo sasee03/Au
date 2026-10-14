@@ -3,7 +3,6 @@ import HomePage from './pages/HomePage'
 import NewProjectPage from './pages/NewProjectPage'
 import DataConnectorsPage from './pages/DataConnectorsPage'
 import DatasetExplorerPage from './pages/DatasetExplorerPage'
-import PipelineConfigPage from './pages/PipelineConfigPage'
 import BronzeLayerPage from './pages/BronzeLayerPage'
 import SilverValidationPage from './pages/SilverValidationPage'
 import GoldLayerPage from './pages/GoldLayerPage'
@@ -18,7 +17,6 @@ export default function App() {
       <Route path="/docs" element={<DocsPage />} />
       <Route path="/project/:projectId/connect" element={<DataConnectorsPage />} />
       <Route path="/project/:projectId/select" element={<DatasetExplorerPage />} />
-      <Route path="/project/:projectId/pipeline-config" element={<PipelineConfigPage />} />
       <Route path="/project/:projectId/bronze" element={<BronzeLayerPage />} />
       <Route path="/project/:projectId/silver" element={<SilverValidationPage />} />
       <Route path="/project/:projectId/gold" element={<GoldLayerPage />} />
