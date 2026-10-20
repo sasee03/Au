@@ -4,8 +4,8 @@ import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 
 const API = 'http://localhost:4000/api'
-const TABS = ['Connect','Select','Configure Pipeline','Bronze Layer','Silver Layer','Gold Layer','Report']
-const TAB_ROUTES = { Connect:'connect', Select:'select', 'Configure Pipeline':'pipeline-config', 'Bronze Layer':'bronze', 'Silver Layer':'silver', 'Gold Layer':'gold', Report:'report' }
+const TABS = ['Connect','Select','Bronze Layer','Silver Layer','Gold Layer','Report']
+const TAB_ROUTES = { Connect:'connect', Select:'select', 'Bronze Layer':'bronze', 'Silver Layer':'silver', 'Gold Layer':'gold', Report:'report' }
 
 export default function DatasetExplorerPage() {
   const { projectId } = useParams()
@@ -21,6 +21,7 @@ export default function DatasetExplorerPage() {
   const [checked,       setChecked]      = useState({})
   const [search,        setSearch]       = useState('')
   const [loading,       setLoading]      = useState(false)
+  const [ingesting,     setIngesting]    = useState(false)
   const [schemaTree,    setSchemaTree]   = useState([]) // [{ schema, tables:[name] }]
   const [activeSchema,  setActiveSchema] = useState(pgConn.schema || 'public')
   const [expandedSchemas, setExpanded]  = useState({})
@@ -88,8 +89,15 @@ export default function DatasetExplorerPage() {
   }
 
   const toggle = name => setChecked(p => ({ ...p, [name]: !p[name] }))
+  const toggleAllTables = () => {
+    const selectAll = !tables.every(table => checked[table.name])
+    setChecked(previous => ({
+      ...previous,
+      ...Object.fromEntries(tables.map(table => [table.name, selectAll])),
+    }))
+  }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const selected = tables.filter(t => checked[t.name]).map(t => t.name)
     if (selected.length === 0) return
     sessionStorage.setItem('aurum_selected_tables', JSON.stringify(selected))
@@ -97,12 +105,32 @@ export default function DatasetExplorerPage() {
     // doesn't fall back to an old table when the source or selection has changed
     sessionStorage.removeItem('aurum_bronze_table')
     sessionStorage.removeItem('aurum_bronze_schema')
+    sessionStorage.removeItem(`aurum_dq_report_v2:${sessionStorage.getItem('aurum_project_id') || 'unknown'}`)
     // Update pg_conn with active schema
     if (source === 'postgres') {
       const updated = { ...pgConn, schema: activeSchema }
       sessionStorage.setItem('aurum_pg_conn', JSON.stringify(updated))
+      setIngesting(true)
+      try {
+        await fetch(`http://localhost:4000/api/bronze/ingest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_id: sessionStorage.getItem('aurum_project_id') || null,
+            tables: selected,
+            source: 'postgres',
+            pg_conn: updated,
+          }),
+        })
+      } catch {
+        // Navigate even when ingestion fails; Bronze will show its empty state.
+      } finally {
+        setIngesting(false)
+        navigate(`/project/${projectId}/bronze`)
+      }
+      return
     }
-    navigate(`/project/${projectId}/pipeline-config`)
+    navigate(`/project/${projectId}/bronze`)
   }
 
   const filtered = tables.filter(t =>
@@ -205,6 +233,18 @@ export default function DatasetExplorerPage() {
               </div>
             )}
 
+            {tables.length > 0 && (
+              <label style={{ display:'flex', alignItems:'center', gap:8, color:'#8b8ca8', fontSize:12, marginBottom:10, cursor:'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={tables.every(table => checked[table.name])}
+                  onChange={toggleAllTables}
+                  style={{ width:15, height:15, accentColor:'#6366f1', cursor:'pointer' }}
+                />
+                Select all tables in {activeSchema}
+              </label>
+            )}
+
             {/* Search */}
             {tables.length > 0 && (
               <input
@@ -274,17 +314,17 @@ export default function DatasetExplorerPage() {
               </span>
               <button
                 onClick={handleContinue}
-                disabled={selectedCount === 0}
+                disabled={selectedCount === 0 || ingesting}
                 style={{
-                  background: selectedCount === 0 ? '#2a2b3d' : '#6366f1',
-                  color: selectedCount === 0 ? '#5a5b72' : '#fff',
+                  background: selectedCount === 0 || ingesting ? '#2a2b3d' : '#6366f1',
+                  color: selectedCount === 0 || ingesting ? '#5a5b72' : '#fff',
                   border: 'none', padding: '10px 28px', borderRadius: 8,
                   fontSize: 14, fontWeight: 600,
-                  cursor: selectedCount === 0 ? 'default' : 'pointer',
+                  cursor: selectedCount === 0 || ingesting ? 'default' : 'pointer',
                   transition: 'all 0.15s',
                 }}
               >
-                Continue →
+                {ingesting ? '⏳ Ingesting…' : 'Continue →'}
               </button>
             </div>
           </main>

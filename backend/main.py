@@ -34,9 +34,16 @@ app.add_middleware(
 async def startup():
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     await init_db()
+    try:
+        from app.services.bronze_service import initialize_dq_jobs
+        await initialize_dq_jobs()
+    except RuntimeError as exc:
+        print(f"[AURUM DQ] Background jobs unavailable until the database connects: {exc}")
 
 @app.on_event("shutdown")
 async def shutdown():
+    from app.services.dq_engine_sql import close_dq_pool
+    await close_dq_pool()
     await close_db()
 
 # ── Routers ───────────────────────────────────────────────────────────────────

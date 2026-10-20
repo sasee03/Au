@@ -115,6 +115,15 @@ async def execute(query: str, *args):
         return None
 
 
+async def executemany(query: str, argslist):
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            return await conn.executemany(query, argslist)
+    except Exception:
+        return None
+
+
 async def fetch(query: str, *args) -> list:
     try:
         pool = await get_pool()

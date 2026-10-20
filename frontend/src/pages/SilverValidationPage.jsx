@@ -5,8 +5,8 @@ import TopNav from '../components/TopNav'
 import { TableNavBar } from './BronzeLayerPage'
 
 const API = 'http://localhost:4000/api'
-const TABS = ['Connect','Select','Configure Pipeline','Bronze Layer','Silver Layer','Gold Layer','Report']
-const TAB_ROUTES = { Connect:'connect', Select:'select', 'Configure Pipeline':'pipeline-config', 'Bronze Layer':'bronze', 'Silver Layer':'silver', 'Gold Layer':'gold', Report:'report' }
+const TABS = ['Connect','Select','Bronze Layer','Silver Layer','Gold Layer','Report']
+const TAB_ROUTES = { Connect:'connect', Select:'select', 'Bronze Layer':'bronze', 'Silver Layer':'silver', 'Gold Layer':'gold', Report:'report' }
 
 const iconTrash = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
