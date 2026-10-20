@@ -12,7 +12,9 @@ import pandas as pd
 import logging
 import os
 import re
+import time
 from decimal import Decimal, InvalidOperation
+from typing import Any
 from uuid import uuid4
 from app.config import settings
 from app.repositories import project_repository as repo
@@ -46,7 +48,7 @@ def _coerce_numeric_columns(frame: pd.DataFrame, numeric_names: set[str]) -> pd.
 
 
 async def _calculate_table_quality(table_name: str, column_names: list[str]) -> dict:
-    engine_name = os.getenv("DQ_ENGINE", "sql").lower()
+    engine_name = dq_engine_sql.resolve_engine()
     if engine_name == "sql":
         pool = await dq_engine_sql.get_dq_pool()
         async with pool.acquire() as conn:
@@ -196,6 +198,19 @@ def _normalize_column_name(name: str) -> str:
 
 def _quote_identifier(value: str) -> str:
     return '"' + value.replace('"', '""') + '"'
+
+
+def _redact_ingest_error(error: Exception, pg_conn: dict) -> str:
+    message = str(error)
+    for key in ("password", "dsn"):
+        secret = pg_conn.get(key)
+        if secret:
+            message = message.replace(str(secret), "[REDACTED]")
+    return re.sub(
+        r"(?i)(postgres(?:ql)?://)[^@\s]+@",
+        r"\1[REDACTED]@",
+        message,
+    )
 
 
 async def _source_dictionary_rows(conn: asyncpg.Connection) -> list[dict] | None:
@@ -458,6 +473,7 @@ async def ingest_postgres(
     results = []
 
     for table in tables:
+        table_started = time.perf_counter()
         try:
             col_rows = await src_conn.fetch(
                 """SELECT column_name, data_type, is_nullable,
@@ -498,8 +514,7 @@ async def ingest_postgres(
             source_table_ref = (
                 f"{_quote_identifier(src_schema)}.{_quote_identifier(table)}"
             )
-            cnt = await src_conn.fetchval(f"SELECT COUNT(*) FROM {source_table_ref}")
-            row_count = int(cnt or 0)
+            row_count = 0
 
             bronze_name = f"{table}_bronze"   # convention: {base_name}_bronze
             stage_name = f"_{bronze_name[:38]}_{uuid4().hex[:16]}"
@@ -514,11 +529,15 @@ async def ingest_postgres(
             )
             select_query = f"SELECT {select_cols} FROM {source_table_ref}"
             sample_rows = []
+            unlogged_setting = os.getenv("BRONZE_UNLOGGED", "true").strip().lower()
+            if unlogged_setting not in {"1", "true", "yes", "on", "0", "false", "no", "off"}:
+                raise ValueError("BRONZE_UNLOGGED must be a boolean value")
+            stage_kind = "UNLOGGED " if unlogged_setting in {"1", "true", "yes", "on"} else ""
 
             async with aurum.transaction():
                 await aurum.execute("CREATE SCHEMA IF NOT EXISTS bronze")
                 await aurum.execute(
-                    f"CREATE TABLE bronze.{_quote_identifier(stage_name)} ({col_defs})"
+                    f"CREATE {stage_kind}TABLE bronze.{_quote_identifier(stage_name)} ({col_defs})"
                 )
                 async with src_conn.transaction():
                     cursor = await src_conn.cursor(select_query)
@@ -526,6 +545,7 @@ async def ingest_postgres(
                         rows = await cursor.fetch(INGEST_BATCH_SIZE, timeout=300)
                         if not rows:
                             break
+                        row_count += len(rows)
                         if len(sample_rows) < 50:
                             sample_rows.extend(
                                 dict(row) for row in rows[:50 - len(sample_rows)]
@@ -548,9 +568,11 @@ async def ingest_postgres(
             await aurum.execute(
                 f"ANALYZE bronze.{_quote_identifier(bronze_name)}"
             )
+            elapsed = time.perf_counter() - table_started
+            rows_per_second = row_count / elapsed if elapsed else 0.0
             log.info(
-                "[bronze] Created typed bronze.%s (%s rows)",
-                bronze_name, row_count,
+                "[bronze] engine=legacy table=bronze.%s rows=%s seconds=%.3f rows_per_second=%.0f",
+                bronze_name, row_count, elapsed, rows_per_second,
             )
 
             if project_id:
@@ -580,13 +602,17 @@ async def ingest_postgres(
                 "base_name":   table,          # base_name == source table name for postgres
                 "row_count": row_count, "col_count": len(schema_cols),
                 "schema_cols": schema_cols, "sample_rows": sample_rows, "error": None,
+                "seconds": elapsed, "rows_per_second": rows_per_second,
             })
 
         except Exception as e:
-            log.error(f"[bronze] Failed to ingest {table}: {e}")
+            safe_error = _redact_ingest_error(e, pg_conn)
+            log.error("[bronze] Failed to ingest %s: %s", table, safe_error)
             results.append({"source_name": table, "bronze_name": f"{table}_bronze",
                              "row_count": 0, "col_count": 0,
-                             "schema_cols": [], "sample_rows": [], "error": str(e)})
+                             "schema_cols": [], "sample_rows": [], "error": safe_error,
+                             "seconds": time.perf_counter() - table_started,
+                             "rows_per_second": 0.0})
 
     await src_conn.close()
     await aurum.close()
@@ -1295,6 +1321,7 @@ async def create_dq_job(
         now = datetime.now(timezone.utc)
         initial_progress = {
             "phase": "fast",
+            "phase_label": "1/2 fast",
             "tables_total": len(normalized_tables),
             "tables_done": 0,
             "fast_tables_done": 0,
@@ -1302,6 +1329,11 @@ async def create_dq_job(
             "current_tables": [],
             "rows_total": 0,
             "rows_done": 0,
+            "fast_rows_done": 0,
+            "deep_rows_done": 0,
+            "deep_rows_total": 0,
+            "fast_rate_rows_s": 137000,
+            "deep_rate_rows_s": 192000,
             "started_at": None,
             "elapsed_s": 0,
             "eta_s": None,
@@ -1519,6 +1551,7 @@ async def _run_dq_job(job_id: str) -> None:
     progress = job["progress"]
     progress["started_at"] = started.isoformat()
     started_monotonic = asyncio.get_running_loop().time()
+    phase_started_monotonic = started_monotonic
     current_tables: set[str] = set()
     tier1_results: dict[str, dict] = {}
     tier2_results: dict[str, dict] = {}
@@ -1528,7 +1561,14 @@ async def _run_dq_job(job_id: str) -> None:
     try:
         await _save_dq_job(job)
         pool = await dq_engine_sql.get_dq_pool()
-        parallel_tables = max(1, int(os.getenv("DQ_MAX_PARALLEL_TABLES", "4")))
+        thread_count = max(1, int(os.getenv("DQ_THREADS", str(os.cpu_count() or 1))))
+        parallel_tables = max(
+            1,
+            int(os.getenv(
+                "DQ_MAX_PARALLEL_TABLES",
+                str(min(4, thread_count)),
+            )),
+        )
         semaphore = asyncio.Semaphore(parallel_tables)
 
         async def prepare(table_name: str) -> tuple[str, dict]:
@@ -1543,19 +1583,38 @@ async def _run_dq_job(job_id: str) -> None:
         progress["rows_total"] = sum(
             metadata["row_estimate"] for metadata in metadata_by_table.values()
         )
+        progress["deep_rows_total"] = progress["rows_total"]
 
         async def update_job_progress() -> None:
+            nonlocal phase_started_monotonic
             elapsed = max(0, int(asyncio.get_running_loop().time() - started_monotonic))
             progress["elapsed_s"] = elapsed
-            done = progress["deep_tables_done"] if progress["phase"] == "deep" else progress["fast_tables_done"]
-            eta = (elapsed * (progress["tables_total"] - done) / done) if done else None
-            progress["eta_s"] = int(eta) if eta is not None else None
+            phase_elapsed = max(
+                1.0,
+                asyncio.get_running_loop().time() - phase_started_monotonic,
+            )
+            if progress["phase"] == "fast":
+                fast_rows = progress["fast_rows_done"]
+                if fast_rows:
+                    progress["fast_rate_rows_s"] = max(1, int(fast_rows / phase_elapsed))
+                fast_remaining = max(0, progress["rows_total"] - fast_rows)
+                eta = (
+                    fast_remaining / max(1, progress["fast_rate_rows_s"])
+                    + progress["deep_rows_total"] / max(1, progress["deep_rate_rows_s"])
+                )
+            else:
+                deep_rows = progress["deep_rows_done"]
+                if deep_rows:
+                    progress["deep_rate_rows_s"] = max(1, int(deep_rows / phase_elapsed))
+                deep_remaining = max(0, progress["deep_rows_total"] - deep_rows)
+                eta = deep_remaining / max(1, progress["deep_rate_rows_s"])
+            progress["eta_s"] = int(eta)
             progress["current_tables"] = sorted(current_tables)
             progress["partial_tables"] = list(partial_by_table.values())
             await _save_dq_job(job)
 
         await update_job_progress()
-        engine_name = os.getenv("DQ_ENGINE", "sql").lower()
+        engine_name = dq_engine_sql.resolve_engine()
 
         async def fast(table_name: str) -> None:
             async with semaphore:
@@ -1583,6 +1642,7 @@ async def _run_dq_job(job_id: str) -> None:
                 progress["fast_tables_done"] += 1
                 progress["tables_done"] = progress["fast_tables_done"]
                 progress["rows_done"] += result["rows_tested"]
+                progress["fast_rows_done"] += result["rows_tested"]
                 partial_by_table[table_name] = _table_quality_summary(
                     table_name, result["checks"], True
                 )
@@ -1591,7 +1651,9 @@ async def _run_dq_job(job_id: str) -> None:
 
         await asyncio.gather(*(fast(table) for table in job["tables"]))
         progress["phase"] = "deep"
+        progress["phase_label"] = "2/2 deep"
         progress["tables_done"] = 0
+        phase_started_monotonic = asyncio.get_running_loop().time()
         await update_job_progress()
 
         async def deep(table_name: str) -> None:
@@ -1612,6 +1674,7 @@ async def _run_dq_job(job_id: str) -> None:
                     table_checks[table_name] = tier1_results[table_name]["checks"]
                 progress["deep_tables_done"] += 1
                 progress["tables_done"] = progress["deep_tables_done"]
+                progress["deep_rows_done"] += metadata_by_table[table_name]["row_estimate"]
                 partial_by_table[table_name] = _table_quality_summary(
                     table_name, table_checks[table_name], False
                 )
@@ -1728,6 +1791,7 @@ async def _run_dq_job(job_id: str) -> None:
             asyncio.get_running_loop().time() - started_monotonic
         )
         job["progress"]["eta_s"] = 0
+        job["progress"]["phase_label"] = "2/2 deep"
         job["progress"]["current_tables"] = []
         job["progress"]["partial_tables"] = table_quality
         job["finished_at"] = datetime.now(timezone.utc)

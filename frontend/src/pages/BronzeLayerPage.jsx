@@ -638,7 +638,7 @@ export default function BronzeLayerPage() {
             {activeDqJob && <div style={{ marginBottom:14, padding:'12px 14px', border:'1px solid #e6d7c7', borderRadius:7, background:'#fffdf9' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:8 }}>
                 <strong style={{ color:'#633315', fontSize:12 }}>
-                  Fast checks {fastTablesDone}/{totalProgressTables} - Deep checks {deepTablesDone}/{totalProgressTables}
+                  {dqProgress?.phase_label || '1/2 fast'} - Fast checks {fastTablesDone}/{totalProgressTables} - Deep checks {deepTablesDone}/{totalProgressTables}
                   {' - '}{(dqProgress?.rows_done || 0).toLocaleString()} / {(dqProgress?.rows_total || 0).toLocaleString()} rows
                   {' - elapsed '}{durationLabel(dqProgress?.elapsed_s)}
                   {' - ETA '}{dqProgress?.eta_s == null ? '—' : durationLabel(dqProgress.eta_s)}

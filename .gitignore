@@ -12,3 +12,6 @@ venv/
 # Node
 node_modules/
 dist/
+
+# DuckDB spill files
+backend/.tmp_duckdb/
